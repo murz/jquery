@@ -247,67 +247,46 @@ test( "jQuery.Deferred - chain - deferred", function() {
 	});
 });
 
-jQuery.each( [ "when", "whenAny", "whenNone" ], function( _, method ) {
-	test( "jQuery." + method , function() {
+test( "jQuery.when" , function() {
 
-		expect( 23 );
+	expect( 23 );
 
-		// Some other objects
-		jQuery.each( {
+	// Some other objects
+	jQuery.each( {
 
-			"an empty string": "",
-			"a non-empty string": "some string",
-			"zero": 0,
-			"a number other than zero": 1,
-			"true": true,
-			"false": false,
-			"null": null,
-			"undefined": undefined,
-			"a plain object": {}
+		"an empty string": "",
+		"a non-empty string": "some string",
+		"zero": 0,
+		"a number other than zero": 1,
+		"true": true,
+		"false": false,
+		"null": null,
+		"undefined": undefined,
+		"a plain object": {}
 
-		} , function( message , value ) {
+	} , function( message , value ) {
 
-			ok( jQuery.isFunction( jQuery[ method ]( value ).done(function( resolveValue ) {
-				if ( method !== "whenNone" ) {
-					strictEqual( resolveValue , value , "Test the promise was resolved with " + message );
-				}
-			}).fail(function( resolveValue ) {
-				if ( method === "whenNone" ) {
-					strictEqual( resolveValue , value , "Test the promise was rejected with " + message );
-				}
-			}).promise ) , "Test " + message + " triggers the creation of a new Promise" );
+		ok( jQuery.isFunction( jQuery.when( value ).done(function( resolveValue ) {
+			strictEqual( resolveValue , value , "Test the promise was resolved with " + message );
+		}).promise ) , "Test " + message + " triggers the creation of a new Promise" );
 
-		} );
+	} );
 
-		ok( jQuery.isFunction( jQuery[ method ]().done(function( resolveValue ) {
-			if ( method !== "whenNone" ) {
-				strictEqual( resolveValue , undefined , "Test the promise was resolved with no parameter" );
-			}
-		}).fail(function( resolveValue ) {
-			if ( method === "whenNone" ) {
-				strictEqual( resolveValue , undefined , "Test the promise was rejected with no parameter" );
-			}
-		}).promise ) , "Test calling when with no parameter triggers the creation of a new Promise" );
+	ok( jQuery.isFunction( jQuery.when().done(function( resolveValue ) {
+		strictEqual( resolveValue , undefined , "Test the promise was resolved with no parameter" );
+	}).promise ) , "Test calling when with no parameter triggers the creation of a new Promise" );
 
-		var cache, i;
+	var cache, i;
 
-		for( i = 1 ; i < 4 ; i++ ) {
-			jQuery[ method ]( cache || jQuery.Deferred( function() {
-				this.resolve( i );
-			}) ).done(function( value ) {
-				if ( method !== "whenNone" ) {
-					strictEqual( value , 1 , "Function executed" + ( i > 1 ? " only once" : "" ) );
-					cache = value;
-				}
-			}).fail(function( value ) {
-				if ( method === "whenNone" ) {
-					strictEqual( value , 1 , "Function executed" + ( i > 1 ? " only once" : "" ) );
-					cache = value;
-				}
-			});
-		}
-	});
-} );
+	for( i = 1 ; i < 4 ; i++ ) {
+		jQuery.when( cache || jQuery.Deferred( function() {
+			this.resolve( i );
+		}) ).done(function( value ) {
+			strictEqual( value , 1 , "Function executed" + ( i > 1 ? " only once" : "" ) );
+			cache = value;
+		});
+	}
+});
 
 test("jQuery.when - joined", function() {
 
@@ -347,98 +326,3 @@ test("jQuery.when - joined", function() {
 	deferreds.futureSuccess.resolve( 1 );
 	deferreds.futureError.reject( 0 );
 });
-
-jQuery.each( [ "whenAny", "whenNone" ], function( _, method ) {
-
-	var isWhenAny = method === "whenAny";
-
-	test("jQuery." + method + " - joined", function() {
-
-		method = jQuery[ method ];
-
-		expect(25);
-
-		var deferreds = {
-				value: 1,
-				success: jQuery.Deferred().resolve( 1 ),
-				error: jQuery.Deferred().reject( 0 ),
-				futureSuccess: jQuery.Deferred(),
-				futureError: jQuery.Deferred()
-			},
-			willSucceed = {
-				value: true,
-				success: true,
-				error: false,
-				futureSuccess: true,
-				futureError: false
-			};
-
-		jQuery.each( deferreds, function( id1, defer1 ) {
-			jQuery.each( deferreds, function( id2, defer2 ) {
-				var shouldResolve = willSucceed[ id1 ] || willSucceed[ id2 ],
-					expected = shouldResolve ? [ 1, undefined ] : [ 0, 0 ],
-					code = id1 + "/" + id2;
-				shouldResolve = shouldResolve ? isWhenAny : !isWhenAny;
-				method( defer1, defer2 ).done(function( a, b ) {
-					if ( shouldResolve ) {
-						same( [ a, b ], expected, code + " => resolve" );
-					}
-				}).fail(function( a, b ) {
-					if ( !shouldResolve ) {
-						same( [ a, b ], expected, code + " => resolve" );
-					}
-				});
-			} );
-		} );
-		deferreds.futureSuccess.resolve( 1 );
-		deferreds.futureError.reject( 0 );
-	} );
-} );
-
-jQuery.each( [ "or", "and" ], function( _, method ) {
-
-	var isAnd = method === "and";
-
-	test("jQuery.Deferred - " + method, function() {
-
-		expect(20);
-
-		var deferreds = {
-				value: 1,
-				success: jQuery.Deferred().resolve( 1 ),
-				error: jQuery.Deferred().reject( 0 ),
-				futureSuccess: jQuery.Deferred(),
-				futureError: jQuery.Deferred()
-			},
-			willSucceed = {
-				value: true,
-				success: true,
-				error: false,
-				futureSuccess: true,
-				futureError: false
-			};
-
-		jQuery.each( deferreds, function( id1, defer1 ) {
-			if ( defer1 !== 1 ) {
-				jQuery.each( deferreds, function( id2, defer2 ) {
-					var shouldResolve = isAnd ?
-							( willSucceed[ id1 ] && willSucceed[ id2 ] ) :
-							( willSucceed[ id1 ] || willSucceed[ id2 ] ),
-						expected = shouldResolve ? [ 1, isAnd ? 1 : undefined ] : [ 0, isAnd ? undefined : 0 ],
-						code = id1 + "/" + id2;
-					defer1[ method ]( defer2 ).done(function( a, b ) {
-						if ( shouldResolve ) {
-							same( [ a, b ], expected, code + " => resolve" );
-						}
-					}).fail(function( a, b ) {
-						if ( !shouldResolve ) {
-							same( [ a, b ], expected, code + " => resolve" );
-						}
-					});
-				} );
-			}
-		} );
-		deferreds.futureSuccess.resolve( 1 );
-		deferreds.futureError.reject( 0 );
-	} );
-} );

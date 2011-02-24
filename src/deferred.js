@@ -1,17 +1,5 @@
 (function( jQuery ) {
 
-// and & or methods factory
-function andOrFactory( any ) {
-	any = any ? "whenAny" : "when";
-	return function( promise ) {
-		return function() {
-			var args = [ promise ];
-			args.push.apply( args, arguments );
-			return jQuery[ any ].apply( jQuery, args );
-		};
-	};
-}
-
 // promise and invert methods factory
 function promiseInvertFactory( invert ) {
 	return function( promise ) {
@@ -48,7 +36,6 @@ var dFactories = {
 				return this;
 			};
 		},
-		and: andOrFactory(),
 		chain: function( promise ) {
 			return function( fn ) {
 				return jQuery.Deferred(function( defer ) {
@@ -61,7 +48,6 @@ var dFactories = {
 			};
 		},
 		invert: promiseInvertFactory( true ),
-		or: andOrFactory( true ),
 		promise: promiseInvertFactory(),
 		then: function( promise ) {
 			return function( doneCallbacks, failCallbacks ) {
@@ -86,54 +72,6 @@ var dFactories = {
 // Add methods with no invert
 for( iDeferred in dFactories ) {
 	pMethods[ iDeferred ] = pMethods[ iDeferred ] || false;
-}
-
-// jQuery.when, jQuery.whenAny and jQuery.whenNone factory
-function whenFactory( any, invert ) {
-	return function( object ) {
-			var length = arguments.length,
-				deferred = length <= 1 && object && jQuery.isFunction( object.promise ) ?
-					object :
-					jQuery.Deferred(),
-				promise = deferred.promise();
-
-		if ( invert ) {
-			promise = promise.invert();
-		}
-
-		if ( length > 1 ) {
-			var array = sliceDeferred.call( arguments, 0 ),
-				count = length,
-				iCallback = function( index ) {
-					return function( value ) {
-						array[ index ] = arguments.length > 1 ?
-								sliceDeferred.call( arguments, 0 ) : value;
-						if ( !( --count ) ) {
-							( any ? deferred.rejectWith : deferred.resolveWith )( promise, array );
-						}
-					};
-				},
-				i;
-			for( i = 0; i < length; i++ ) {
-				object = array[ i ];
-				if ( object && jQuery.isFunction( object.promise ) ) {
-					object.promise().then( any ? deferred.resolve : iCallback(i),
-							any ? iCallback(i) : deferred.reject );
-				} else if( any ) {
-					deferred.resolve( object );
-					break;
-				} else {
-					--count;
-				}
-			}
-			if ( !any && !count ) {
-				deferred.resolveWith( promise, array );
-			}
-		} else if ( deferred !== object ) {
-			deferred.resolve( object );
-		}
-		return promise;
-	};
 }
 
 jQuery.extend({
@@ -233,9 +171,41 @@ jQuery.extend({
 	},
 
 	// Deferred helpers
-	when: whenFactory(),
-	whenAny: whenFactory( true ),
-	whenNone: whenFactory( true, true )
+	when: function( object ) {
+		var length = arguments.length,
+			deferred = length <= 1 && object && jQuery.isFunction( object.promise ) ?
+				object :
+				jQuery.Deferred(),
+			promise = deferred.promise();
+
+		if ( length > 1 ) {
+			var array = sliceDeferred.call( arguments, 0 ),
+				count = length,
+				iCallback = function( index ) {
+					return function( value ) {
+						array[ index ] = arguments.length > 1 ?
+								sliceDeferred.call( arguments, 0 ) : value;
+						if ( !( --count ) ) {
+							deferred.resolveWith( promise, array );
+						}
+					};
+				};
+			while( length-- ) {
+				object = array[ length ];
+				if ( object && jQuery.isFunction( object.promise ) ) {
+					object.promise().then( iCallback(length), deferred.reject );
+				} else {
+					--count;
+				}
+			}
+			if ( !count ) {
+				deferred.resolveWith( promise, array );
+			}
+		} else if ( deferred !== object ) {
+			deferred.resolve( object );
+		}
+		return promise;
+	}
 });
 
 })( jQuery );
